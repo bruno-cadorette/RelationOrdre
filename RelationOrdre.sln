@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "RelationOrdre", "MathF\RelationOrdre.fsproj", "{855C620A-6718-4AF0-9E28-CDA0BCAEBCE8}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "RelationOrdre", "RelationOrdre\RelationOrdre.fsproj", "{855C620A-6718-4AF0-9E28-CDA0BCAEBCE8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
