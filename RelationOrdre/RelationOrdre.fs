@@ -3,13 +3,12 @@ open System;
 
 type regleRelation<'T> = 'T->'T->bool
 
-//On peut remplacer par array.[i, *] en f# 3.1
 module Array2D =
-    let getRow (i:int)(array:'T[,]) = 
-        array.[i..i, *] |> Seq.cast<'T>
+    let getRow i (array:'T[,]) = 
+        array.[i, *]
     
-    let getColumn (i:int)(array:'T[,]) = 
-        array.[*, i..i] |> Seq.cast<'T>
+    let getColumn i (array:'T[,]) = 
+        array.[*, i]
 
 type Relation<'T> = {
     elements:'T[]
@@ -34,13 +33,13 @@ type Relation<'T> with
                 false
         Array2D.init (n+1) (n+1) mEnC
         
-    static member private trouver (selecteur:int->bool[,]->seq<bool>)(relation:Relation<'T>) =
+    static member private trouver (selecteur:int->bool[,]->bool[])(relation:Relation<'T>) =
         [|0..relation.matriceM.GetUpperBound(0)|] 
-        |> Array.filter(fun i->relation.matriceM |> selecteur(i) |> Seq.mapi(fun j x->(x,j)) |> Seq.forall(fun (x,j)-> not x || i=j)) 
+        |> Array.filter(fun i->relation.matriceM |> selecteur(i) |> Array.mapi(fun j x->(x,j)) |> Seq.forall(fun (x,j)-> not x || i=j)) 
         |> Array.map(fun i->relation.elements.[i])
 
-    static member private unique (selecteur:int->bool[,]->seq<bool>) (relation:Relation<'T>) =
-        let indice = [|0..relation.matriceM.GetUpperBound(0)|] |> Array.tryFind(fun i->relation.matriceM |> selecteur(i) |> Seq.forall(fun x->x))
+    static member private unique (selecteur:int->bool[,]->bool[]) (relation:Relation<'T>) =
+        let indice = [|0..relation.matriceM.GetUpperBound(0)|] |> Array.tryFind(fun i->relation.matriceM |> selecteur(i) |> Array.forall(fun x->x))
         match indice with
         | Some n -> Some(relation.elements.[n])
         | None   -> None
