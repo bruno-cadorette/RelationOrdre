@@ -11,17 +11,16 @@ let PrintMatrice (matrice: bool[,]) =
     for i in 0..(matrice|>Array2D.length1)-1 do
         Console.WriteLine(String.Join("",matrice |> Array2D.getRow(i) |> Seq.map(fun x->Convert.ToInt32(x))))
 
-// Si la liste est [1;2;3;4;5;6], cette fonction retourne [(1,2);(2,3);(3;4);(4;5);(5;6)]
-let rec listCouple f list =
-    match list with
-    |h::t when not t.IsEmpty->(f h t.Head)::listCouple f t
-    |_->[]
+
+// Si la liste est [1;2;3;4;5;6], cette fonction retourne [(f 1 2);(f 2 3);(f 3 4);(f 4 5);(f 5 6)]
+module List =
+    let rec couple f list =
+        match list with
+        |h::t when not t.IsEmpty->(f h t.Head)::couple f t
+        |_->[]
 
 
-let hasseForm relation rangs =
-    let formHasse = new Form()
-    formHasse.Text<-"Diagramme de Hasse"
-    
+let hasseForm relation rangs =    
     let startX,startY = 40,40
     let hauteur = 
         let a = startY * 4
@@ -31,22 +30,19 @@ let hasseForm relation rangs =
         let a = startX * 4
         (rangs |> List.map(fun (i,x)-> x|>Array.length) |> List.max) * startX + a
 
-    formHasse.Width <- largeur
-    formHasse.Height <- hauteur
-
-
+    let formHasse = new Form(Text = "Diagramme de Hasse", Width = largeur, Height = hauteur)
     let position i (rangs,elems) =
         let y = (i+1)*startY
         elems |> Array.mapi(fun j elem->elem,((j+1)*startX,y))
+    //Tableau de labels
     let getLabels arr =
         let f (elem,(x,y)) =
-            let label = new Label()
-            label.Location <- new Drawing.Point(x,y)
-            label.Text <- relation.elements.[elem].ToString()
-            label.AutoSize <- true
-            label
+            new Label(
+                Location = new Drawing.Point(x,y),
+                Text = relation.elements.[elem].ToString(),
+                AutoSize = true)
         arr |> Array.map(f)
-
+    //Tableau de coordonnées pour les lignes
     let getLignes haut bas=
         let dessiner (i,(x1,y1)) =
             let r = relation.matriceC |> Array2D.getRow(i)
@@ -56,14 +52,13 @@ let hasseForm relation rangs =
         bas |> Array.collect(dessiner)
 
     let dessinerRelations points =
-        let paint(e:PaintEventArgs) = 
+        fun (e:PaintEventArgs) ->
             let g = e.Graphics
             let pen = new Pen(Color.Black)
             points |> Seq.iter(fun (p1:Point,p2)->g.DrawLine(pen,p1,p2))
-        paint
 
     let elements = rangs |> List.mapi(position)
-
+    //AddRange accepte seulement un tableau de Control
     let labels = 
         elements
         |> Seq.collect(getLabels)
@@ -72,35 +67,72 @@ let hasseForm relation rangs =
 
     let lignes =
         elements
-        |> listCouple getLignes
+        |> List.couple getLignes
         |> Seq.concat
     formHasse.Controls.AddRange(labels)
     formHasse.Paint.Add(dessinerRelations lignes)
     formHasse
    
 
+let proprieteRelation relation (form:FormRelation) =
+    let text m = 
+        match m with
+        |Some(a)->a.ToString()
+        |None->"-"
+    if Relation.estRelationEquivalence relation then
+        form.labelEquivalence.Visible <- true
+        form.panelOrdre.Visible <- false
+    else
+        form.labelEquivalence.Visible <- false
+        form.panelOrdre.Visible <- true
+        form.labelMaximaux.Text<-sprintf "%A" (relation |> Relation.maximaux)
+        form.labelMaximum.Text <- text(relation |> Relation.maximum)
+        form.labelMinimaux.Text <- sprintf "%A" (relation |> Relation.minimaux)
+        form.labelMinimum.Text <- text(relation |> Relation.minimum)
+    
+let getElements (text:string) =
+    let e = text.Split(',') |> Array.map(Int32.TryParse)
+    match Array.forall fst e with
+    |true->Some(Array.map snd e)
+    |false->None
+        
+
+
+let calcul (form:FormRelation) =
+    fun e ->
+        let check(x:Control) = 
+            match x with
+            | :?RadioButton as x when x.Checked->true
+            |_->false
+        //Peut être null
+        let elements = (getElements form.textBoxElements.Text).Value
+        let fonction =
+            let radios = [|Relations.Divise;Relations.Egal;Relations.Puissance|] 
+            //Peut être null
+            let tag = 
+                form.groupBoxRelation.Controls 
+                |> Seq.cast<Control> 
+                |> Seq.tryFind(check)
+            radios.[Convert.ToInt32(tag.Value.Tag)]
+        let relation = Relation.init fonction elements
+        let rangs = relation |> Relation.rangs
+        proprieteRelation relation form
+        (*Ça serait bien si a la place de recréer le bouton à chaque fois je pourrais simplement changer 
+        l'évènement ou quelque chose comme ça*)
+        let buttonHasse = 
+            new Button(
+                Text="Diagramme de Hasse")
+        buttonHasse.Click.Add(fun e->
+        (hasseForm relation rangs).Show()) 
+        for x in form.panelHasse.Controls do
+            form.panelHasse.Controls.Remove(x)
+        form.panelHasse.Controls.Add(buttonHasse)
+
+
 //TODO: Faire le diagramme de Hasse
 [<EntryPoint>]
 let main argv = 
-    let elements = [|1..20|]
-    let relation = Relation.init Relations.Divise elements
-    let rangs = (relation |> Relation.rangs )
     let form = new FormRelation()
-    form.buttonHasse.Click.Add(fun e->(hasseForm relation rangs).Show())
+    form.buttonCalcul.Click.Add(calcul form)
     Application.Run(form)
-//    printfn "Les maximaux sont : %A" (relation |> Relation.maximaux )
-//    printfn "Les minimaux sont : %A" (relation |> Relation.minimaux )
-//    if (Relation.estRelationEquivalence relation) then
-//        printfn "Cette relation est une relation d'équivalence, il n'y a donc pas de maximum/minimum"
-//    else
-//        printfn "Le maximum est : %A" (relation |> Relation.maximum )
-//        printfn "Le minimum est : %A" (relation |> Relation.minimum )
-//        printfn "Relation d'ordre : %A" (relation |> Relation.estRelationOrdre )
-//        
-//        printfn "Les rangs sont : %A" rangs
-//    printfn "La matrice M est : "
-//    PrintMatrice(relation.matriceM)
-//    printfn "La matrice C est : "
-//    PrintMatrice(relation.matriceC)
-//    Console.ReadKey()
     0 // retourne du code de sortie entier

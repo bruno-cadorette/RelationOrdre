@@ -25,6 +25,10 @@ module Prime =
 module Relations =
     let inline Divise a b =
         (a<>0 && b % a = 0)||(a=b && a=0)
+    let Puissance a b =
+        let d = Math.Log((float)b,(float)a)
+        d%1.0=0.0
+
     let inline Contient a b =
         a |> Seq.forall(fun x->b|>Seq.exists(fun y->y=x))
     let inline Egal a b =
